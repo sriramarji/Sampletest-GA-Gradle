@@ -1,26 +1,51 @@
-name: Build and Scan
+name: Build, Scan, and Push to ECR
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ "main" ] # Trigger on pushes to the main branch
+  pull_request:
+    branches: [ "main" ] # Trigger on pull requests targeting the main branch
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: Build with Gradle
-      run: ./gradlew build
+      - name: Set up Gradle
+        uses: gradle/gradle-build-action@v3
 
-    - name: SonarCloud Scan
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      run: ./gradlew sonarqube
+      - name: Build with Gradle
+        run: ./gradlew build
+
+      - name: Run SonarQube analysis
+        run: ./gradlew sonarqube -Dsonar.projectKey=hello-world-app -Dsonar.host.url=http://localhost:9000 -Dsonar.login=${{ secrets.SONARQUBE_TOKEN }}
+        env:
+          SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }} # Make sure to add SONARQUBE_TOKEN as a GitHub secret
+
+      - name: Login to AWS ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # Configure AWS credentials as GitHub secrets
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: your-aws-region # Replace with your AWS region
+
+      - name: Build and tag Docker image
+        id: build-image
+        run: |
+          docker build -t hello-world-app .
+          docker tag hello-world-app:latest ${{ steps.login-ecr.outputs.registry }}/hello-world-repo:latest
+
+      - name: Push Docker image to ECR
+        id: push-image
+        run: |
+          docker push ${{ steps.login-ecr.outputs.registry }}/hello-world-repo:latest
