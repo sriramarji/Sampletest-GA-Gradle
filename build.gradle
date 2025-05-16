@@ -30,8 +30,8 @@ jar {
 // SonarQube configuration
 sonarqube {
     properties {
-        property "sonar.projectKey", "your_project_key"         // Replace with your actual project key
-        property "sonar.organization", "your_org"               // Replace with your SonarCloud organization
+        property "sonar.projectKey", "evs-sonarorganization_hello-world-app"         // Replace with your actual project key
+        property "sonar.organization", "evs-sonarorganization"               // Replace with your SonarCloud organization
         property "sonar.host.url", "https://sonarcloud.io"      // Or your SonarQube server URL
         property "sonar.login", System.getenv("SONAR_TOKEN")    // Token stored in GitHub Secrets
     }
